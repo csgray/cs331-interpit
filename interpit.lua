@@ -289,7 +289,25 @@ function interpit.interp(ast, state, incall, outcall)
     elseif ast[1] == CALL_FUNC then
       interp_stmt(ast)
       value = state.v["return"]
-    end
+    
+    elseif type(ast[1]) == "table" then
+      if ast[1][1] == UN_OP then
+        local unary = evalExpr(ast[2])
+        
+        if ast[1][2] == "+" then
+          value = unary
+          
+        elseif ast[1][2] == "-" then
+          value = -(unary)
+        
+        elseif unary == 0 then
+          value = 1
+        
+        else
+          value = 0
+        end
+      end
+    end    
     
     if value == nil then
       return 0
