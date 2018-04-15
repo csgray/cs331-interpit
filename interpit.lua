@@ -82,6 +82,16 @@ local function numToStr(n)
     return ""..n
 end
 
+-- strToBool
+-- Given a string, return its Boolean.
+local function strToBool(s)
+  assert(type(s) == "string")
+  if s == "true" then
+    return true
+  else
+    return false
+  end
+end
 
 -- boolToInt
 -- Given a boolean, return 1 if it is true, 0 if it is false.
