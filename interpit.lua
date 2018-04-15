@@ -306,6 +306,36 @@ function interpit.interp(ast, state, incall, outcall)
         else
           value = 0
         end
+        
+      elseif ast[1][1] == BIN_OP then
+        local lhs = evalExpr(ast[2])
+        local rhs = evalExpr(ast[3])
+        local bool = lhs == rhs
+        
+        if ast[1][2] == "+" then
+          value = lhs + rhs
+          
+        elseif ast[1][2] == "-" then
+          value = lhs - rhs
+        
+        elseif ast[1][2] == "*" then
+          value = lhs * rhs
+        
+        elseif ast[1][2] == "/" then
+          if rhs == 0 then
+            value = 0
+          else
+            value = numToInt(lhs / rhs)
+          end
+          
+        elseif ast[1][2] == "%" then
+          if rhs == 0 then
+            value = 0
+          else
+            value = numToInt(lhs % rhs)
+          end
+          
+        end
       end
     end    
     
