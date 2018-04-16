@@ -312,6 +312,7 @@ function interpit.interp(ast, state, incall, outcall)
         local rhs = evalExpr(ast[3])
         local bool = lhs == rhs
         
+        -- Arithmetic Operators
         if ast[1][2] == "+" then
           value = lhs + rhs
           
@@ -334,7 +335,42 @@ function interpit.interp(ast, state, incall, outcall)
           else
             value = numToInt(lhs % rhs)
           end
+        
+        -- Comparison Operators
+        elseif ast[1][2] == "==" then
+          value = boolToInt(lhs == rhs)
+        
+        elseif ast[1][2] == "!=" then
+          value = boolToInt(lhs ~= rhs)
           
+        elseif ast[1][2] == "<" then
+          value = boolToInt(lhs < rhs)
+        
+        elseif ast[1][2] == "<=" then
+          value = boolToInt(lhs <= rhs)
+        
+        elseif ast[1][2] == ">" then
+          value = boolToInt(lhs > rhs)
+        
+        elseif ast[1][2] == ">=" then
+          value = boolToInt(lhs >= rhs)
+        
+        -- Logical Operatos
+        elseif ast[1][2] == "&&" then
+          if lhs == 0 and rhs == 0 then
+            value = 0
+          else 
+            value = boolToInt(bool)
+          end
+          
+        elseif ast[1][2] == "||" then
+          if lhs == 0 and rhs == 0 then
+            value = 0
+          elseif lhs ~= 0 or rhs ~= 0 then
+            value =1
+          else
+            value = boolToInt(bool)
+          end
         end
       end
     end    
