@@ -179,21 +179,22 @@ function interpit.interp(ast, state, incall, outcall)
         -- There may be any number of elseif statements and else is always at the end
         elseif ast[1] == IF_STMT then
             local done = false
-            local elseIndex = 0
+            local lastCondition = 2
             
-            -- Start at first condition, end before final stmt_list, and check any additional conditions
+            -- Start at first condition, end before final stmt_list (could be else), and check any additional conditions
             for i = 2, #ast - 1, 2 do
               -- if condition is not false and have not already executed an if statement
               if evaluateExpression(ast[i]) ~= 0 and not done then
                 interp_stmt_list(ast[i + 1])
                 done = true
               end
-              elseIndex = i
+              -- save index of last condition
+              lastCondition = i
             end
             
-            -- if there is an else statement and have not already executed an if statement
-            if ast[elseIndex + 2] and not done then
-              interp_stmt_list(ast[elseIndex + 2])
+            -- if there is an else statement, which is two past last condition, and have not already executed an if statement
+            if ast[lastCondition + 2] and not done then
+              interp_stmt_list(ast[lastCondition + 2])
             end
         
         -- AST: { WHILE_STMT, condition, stmt_list }
