@@ -1,24 +1,18 @@
--- interpit.lua  INCOMPLETE
--- Glenn G. Chappell
--- 29 Mar 2018
--- Updated 2 Apr 2018
+-- interpit.lua
+-- Corey S. Gray
+-- 15 April 2018
 --
 -- For CS F331 / CSCE A331 Spring 2018
 -- Interpret AST from parseit.parse
 -- For Assignment 6, Exercise B
 
-
 -- *******************************************************************
 -- * To run a Dugong program, use dugong.lua (which uses this file). *
 -- *******************************************************************
 
-
-local interpit = {}  -- Our module
-
+local interpit = {}  -- The module
 
 -- ***** Variables *****
-
-
 -- Symbolic Constants for AST
 
 local STMT_LIST   = 1
@@ -38,13 +32,10 @@ local BOOLLIT_VAL = 14
 local SIMPLE_VAR  = 15
 local ARRAY_VAR   = 16
 
-
 -- ***** Utility Functions *****
-
-
--- numToInt
+-- numberToInteger
 -- Given a number, return the number rounded toward zero.
-local function numToInt(n)
+local function numberToInteger(n)
     assert(type(n) == "number")
 
     if n >= 0 then
@@ -55,36 +46,36 @@ local function numToInt(n)
 end
 
 
--- strToNum
--- Given a string, attempt to interpret it as an integer. If this
--- succeeds, return the integer. Otherwise, return 0.
-local function strToNum(s)
+-- stringToInteger
+-- Given a string, attempt to interpret it as an integer.
+-- If this succeeds, return the integer. Otherwise, return 0.
+local function stringToInteger(s)
     assert(type(s) == "string")
 
-    -- Try to do string -> number conversion; make protected call
-    -- (pcall), so we can handle errors.
+    -- Try to do string -> number conversion;
+    -- make protected call (pcall), so we can handle errors.
     local success, value = pcall(function() return 0+s end)
 
     -- Return integer value, or 0 on error.
     if success then
-        return numToInt(value)
+        return numberToInteger(value)
     else
         return 0
     end
 end
 
 
--- numToStr
+-- numberToString
 -- Given a number, return its string form.
-local function numToStr(n)
+local function numberToString(n)
     assert(type(n) == "number")
 
     return ""..n
 end
 
--- strToBool
+-- stringToBoolean
 -- Given a string, return its Boolean.
-local function strToBool(s)
+local function stringToBoolean(s)
   assert(type(s) == "string")
   if s == "true" then
     return true
@@ -93,9 +84,9 @@ local function strToBool(s)
   end
 end
 
--- boolToInt
--- Given a boolean, return 1 if it is true, 0 if it is false.
-local function boolToInt(b)
+-- booleanToInteger
+-- Given a boolean, return 1 if it is true or 0 if it is false.
+local function booleanToInteger(b)
     assert(type(b) == "boolean")
 
     if b then
@@ -106,58 +97,7 @@ local function boolToInt(b)
 end
 
 
--- astToStr
--- Given an AST, produce a string holding the AST in (roughly) Lua form,
--- with numbers replaced by names of symbolic constants used in parseit.
--- A table is assumed to represent an array.
--- See the Assignment 4 description for the AST Specification.
---
--- THIS FUNCTION IS INTENDED FOR USE IN DEBUGGING ONLY!
--- IT SHOULD NOT BE CALLED IN THE FINAL VERSION OF THE CODE.
-function astToStr(x)
-    local symbolNames = {
-        "STMT_LIST", "INPUT_STMT", "PRINT_STMT", "FUNC_STMT",
-        "CALL_FUNC", "IF_STMT", "WHILE_STMT", "ASSN_STMT", "CR_OUT",
-        "STRLIT_OUT", "BIN_OP", "UN_OP", "NUMLIT_VAL", "BOOLLIT_VAL",
-        "SIMPLE_VAR", "ARRAY_VAR"
-    }
-    if type(x) == "number" then
-        local name = symbolNames[x]
-        if name == nil then
-            return "<Unknown numerical constant: "..x..">"
-        else
-            return name
-        end
-    elseif type(x) == "string" then
-        return '"'..x..'"'
-    elseif type(x) == "boolean" then
-        if x then
-            return "true"
-        else
-            return "false"
-        end
-    elseif type(x) == "table" then
-        local first = true
-        local result = "{"
-        for k = 1, #x do
-            if not first then
-                result = result .. ","
-            end
-            result = result .. astToStr(x[k])
-            first = false
-        end
-        result = result .. "}"
-        return result
-    elseif type(x) == "nil" then
-        return "nil"
-    else
-        return "<"..type(x)..">"
-    end
-end
-
-
 -- ***** Primary Function for Client Code *****
-
 
 -- interp
 -- Interpreter, given AST returned by parseit.parse.
@@ -179,140 +119,185 @@ function interpit.interp(ast, state, incall, outcall)
     -- portion of the code it is interpreting. The function-wide
     -- versions of state, incall, and outcall may be used. The
     -- function-wide version of state may be modified as appropriate.
-
+    
+    -- interp_stmt_list
+    -- AST: { STMT_LIST }
     function interp_stmt_list(ast)
         for i = 2, #ast do
             interp_stmt(ast[i])
         end
     end
-
+    
+    -- interp_stmt
+    -- Takes a table corresponding to a statement AST and modifies the global state appropriately.
+    -- Most ASTs start with an element identifying the statement, so this function is a series of cases based on what is the first element.
     function interp_stmt(ast)
         local name, body, str
-
-        if ast[1] == INPUT_STMT then
-            if ast[2][1] == SIMPLE_VAR then
-              name = ast[2][2]
-              body = incall()
-              state.v[name] = numToInt(strToNum(body))
-            end
         
+        -- AST: { INPUT_STMT, lvalue }
+        -- Dugong only takes SIMPLE_VAR which hold integers, so "lvalue" is the simple variable that the user will input.
+        if ast[1] == INPUT_STMT then
+            name = ast[2][2] -- lvalue
+            body = incall()
+            state.v[name] = stringToInteger(body)
+        
+        -- AST: { PRINT_STMT, arguments }
+        -- arguments may be any combination of carriage returns, string literals, or expressions
         elseif ast[1] == PRINT_STMT then
-            for i = 2, #ast do
-                if ast[i][1] == CR_OUT then
+            for i = 2, #ast do  -- skip the first element (PRINT_STMT) then proceed through arguemnts
+                if ast[i][1] == CR_OUT then -- carriage return
                     outcall("\n")
-                elseif ast[i][1] == STRLIT_OUT then
+                elseif ast[i][1] == STRLIT_OUT then -- string literals
                     str = ast[i][2]
-                    outcall(str:sub(2,str:len()-1))  -- Remove quotes
-                else
-                    body = evalExpr(ast[2])
-                    outcall(numToStr(body))
+                    outcall(str:sub(2, str:len() - 1))  -- remove quotes
+                else -- expression
+                    body = evaluateExpression(ast[2])
+                    outcall(numberToString(body))
                 end
             end
         
+        -- AST: { FUNC_STMT, identifier, stmt_list }
+        -- Creates/updates an entry in state's function table.
         elseif ast[1] == FUNC_STMT then
-            name = ast[2]
-            body = ast[3]
+            name = ast[2] -- identifier
+            body = ast[3] -- stmt_list
             state.f[name] = body
         
+        -- AST: { CALL_FUNC, identifier }
+        -- Retrieves a function from state's function table.
         elseif ast[1] == CALL_FUNC then
-            name = ast[2]
-            body = state.f[name]
+            name = ast[2] -- identifier
+            body = state.f[name] -- Retrieves the function from the state's function table
             if body == nil then
-                body = { STMT_LIST }  -- Default AST
+                body = { STMT_LIST }  -- Default AST because Dugong does not throw fatal errors
             end
             interp_stmt_list(body)
         
+        -- AST: { IF_STMT, condition, stmt_list }
+        -- elseif adds additional conditions and stmt_lists: { IF_STMT, condition, stmt_list, condition, stmt_list }
+        -- else adds an stmt_list without a condition: { IF_STMT, condition, stmt_list, stmt_list }
+        -- There may be any number of elseif statements and else is always at the end
         elseif ast[1] == IF_STMT then
             local done = false
             local elseIndex = 0
             
+            -- Start at first condition, end before final stmt_list, and check any additional conditions
             for i = 2, #ast - 1, 2 do
-              if evalExpr(ast[i]) ~= 0 and not done then
+              -- if condition is not false and have not already executed an if statement
+              if evaluateExpression(ast[i]) ~= 0 and not done then
                 interp_stmt_list(ast[i + 1])
                 done = true
               end
               elseIndex = i
             end
-              
+            
+            -- if there is an else statement and have not already executed an if statement
             if ast[elseIndex + 2] and not done then
               interp_stmt_list(ast[elseIndex + 2])
             end
-            
+        
+        -- AST: { WHILE_STMT, condition, stmt_list }
         elseif ast[1] == WHILE_STMT then
-            while evalExpr(ast[2]) ~= 0 do
-              interp_stmt_list(ast[3])
-            end
-            
+          -- while condition is not false
+          while evaluateExpression(ast[2]) ~= 0 do 
+            interp_stmt_list(ast[3])
+          end
+        
+        -- AST: {ASSN_STMT, expression }
         else
-            assert(ast[1] == ASSN_STMT)
             processLValue(ast)
-        end
-    end
+        end -- End statement cases
+    end -- End interp_stmt
 
+  -- processLValue
+  -- LValues take the form: ID [ ‘[’ expr ‘]’ 
+  -- Dugong only uses SIMPLE_VAR and ARRAY_VAR
   function processLValue(ast)
-    local name, body
+    local identifier, value
     
+    -- AST: { SIMPLE_VAR, identifier, value }
     if ast[2][1] == SIMPLE_VAR then
-      name = ast[2][2]
-      body = evalExpr(ast[3])
-      state.v[name] = numToInt(body)
-      
+      identifier = ast[2][2]
+      value = evaluateExpression(ast[3])
+      state.v[identifier] = numberToInteger(value)
+    
+    -- AST: { ARRAY_VAR, identifier[index], value }
     elseif ast[2][1] == ARRAY_VAR then
-      name = ast[2][2]
-      if state.a[name] == nil then
-        state.a[name] = {}
+      identifier = ast[2][2]
+      if state.a[identifier] == nil then -- replace nonexistent arrays with empty arrays
+        state.a[identifier] = {}
       end
-      body = evalExpr(ast[3])
-      state.a[name][evalExpr(ast[2][3])] = body
+      value = evaluateExpression(ast[3])
+      state.a[identifier][evaluateExpression(ast[2][3])] = value
     end
   end
 
-  function evalExpr(ast)
+  -- evaluateExpression
+  function evaluateExpression(ast)
     local value
     
+    -- Factor: Numeric Literal
+    -- AST: { NUMLIT_VAL, integer }
     if ast[1] == NUMLIT_VAL then
-      value = strToNum (ast[2])
-      
+      value = stringToInteger (ast[2])
+    
+    -- Factor: lvalue
+    -- AST: { SIMPLE_VAR, identifier }
     elseif ast[1] == SIMPLE_VAR then
       value = state.v[ast[2]]
-      
+    
+    -- Factor: lvalue
+    -- AST: { ARRAY_VAR, identifier, index }
     elseif ast[1] == ARRAY_VAR then
       if state.a[ast[2]] ~= nil then
-        value = state.a[ast[2]][evalExpr(ast[3])]
-      else
+        value = state.a[ast[2]][evaluateExpression(ast[3])]
+      else -- nonexistent array items are set to 0 as Dugong does not throw fatal errors
         value = 0
       end
-      
+    
+    -- Factor: Boolean Literal
+    -- AST: { BOOLLIT_VAL, true/false }
     elseif ast[1] == BOOLLIT_VAL then
-      value = boolToInt(strToBool(ast[2]))
-      
+      value = booleanToInteger(stringToBoolean(ast[2]))
+    
+    -- Factor: Function Call
+    -- AST: { CALL_FUNC, identifier }
     elseif ast[1] == CALL_FUNC then
       interp_stmt(ast)
       value = state.v["return"]
     
+    -- Comparison and Arithmetic Expressions
     elseif type(ast[1]) == "table" then
+      -- Unary Operators
+      -- AST: { { UN_OP, operator }, unary }
       if ast[1][1] == UN_OP then
-        local unary = evalExpr(ast[2])
+        local unary = evaluateExpression(ast[2])
         
+        -- Factor: Unary Operator +
         if ast[1][2] == "+" then
           value = unary
-          
+        
+        -- Factor: Unary Operator -
         elseif ast[1][2] == "-" then
           value = -(unary)
         
+        -- Comparison-Expression: Not
         elseif unary == 0 then
           value = 1
-        
         else
           value = 0
-        end
-        
+        end -- Unary Operators
+      
+      -- Binary Operators
+      -- AST: { { BIN_OP, operator }, lhs, rhs }
       elseif ast[1][1] == BIN_OP then
-        local lhs = evalExpr(ast[2])
-        local rhs = evalExpr(ast[3])
-        local bool = lhs == rhs
+        local lhs = evaluateExpression(ast[2])
+        local rhs = evaluateExpression(ast[3])
         
         -- Arithmetic Operators
+        -- Most Dugong binary operators behave the same as Lua operators except that
+        --   dividing or modulus by zero returns zero
+        --   not-equal is != instead of ~=
         if ast[1][2] == "+" then
           value = lhs + rhs
           
@@ -323,70 +308,70 @@ function interpit.interp(ast, state, incall, outcall)
           value = lhs * rhs
         
         elseif ast[1][2] == "/" then
-          if rhs == 0 then
+          if rhs == 0 then -- Dividing by 0
             value = 0
           else
-            value = numToInt(lhs / rhs)
+            value = numberToInteger(lhs / rhs)
           end
           
         elseif ast[1][2] == "%" then
-          if rhs == 0 then
+          if rhs == 0 then -- Modulus by 0
             value = 0
           else
-            value = numToInt(lhs % rhs)
+            value = numberToInteger(lhs % rhs)
           end
         
         -- Comparison Operators
         elseif ast[1][2] == "==" then
-          value = boolToInt(lhs == rhs)
+          value = booleanToInteger(lhs == rhs)
         
         elseif ast[1][2] == "!=" then
-          value = boolToInt(lhs ~= rhs)
+          value = booleanToInteger(lhs ~= rhs)
           
         elseif ast[1][2] == "<" then
-          value = boolToInt(lhs < rhs)
+          value = booleanToInteger(lhs < rhs)
         
         elseif ast[1][2] == "<=" then
-          value = boolToInt(lhs <= rhs)
+          value = booleanToInteger(lhs <= rhs)
         
         elseif ast[1][2] == ">" then
-          value = boolToInt(lhs > rhs)
+          value = booleanToInteger(lhs > rhs)
         
         elseif ast[1][2] == ">=" then
-          value = boolToInt(lhs >= rhs)
+          value = booleanToInteger(lhs >= rhs)
         
-        -- Logical Operatos
+        -- Logical And
         elseif ast[1][2] == "&&" then
           if lhs == 0 and rhs == 0 then
             value = 0
           else 
-            value = boolToInt(bool)
+            value = booleanToInteger(lhs == rhs)
           end
-          
+        
+        -- Logical Or
         elseif ast[1][2] == "||" then
           if lhs == 0 and rhs == 0 then
             value = 0
-          elseif lhs ~= 0 or rhs ~= 0 then
-            value =1
           else
-            value = boolToInt(bool)
+            value = 1
           end
-        end
-      end
-    end    
+        end -- Binary Operators
+      end -- Comparison and Arithmetic Expressions
+    end -- expression cases   
     
+    -- Empty expressions are evaluated as 0 since Dugong does not have fatal errors
     if value == nil then
-      return 0
-    else
-      return value
-    end
-  end
+      value = 0
+    end 
+    
+    return value
+  end-- evaluateExpression
 
   
   -- Body of function interp
   interp_stmt_list(ast)
   return state
-end
+end -- interpit.interp
 
 -- ***** Module Export *****
 return interpit
